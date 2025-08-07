@@ -1,0 +1,6 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #ff4e50, #1e90ff); /* red to blue gradient */
+  height: 100vh;
+}

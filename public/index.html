@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ER Real Time Chat for LRS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #ff4e50, #1e90ff);
+    }
+
+    #login {
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    #username {
+      width: 80%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .chat-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #messages li {
+      margin: 10px 0;
+      max-width: 70%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+
+    .my-message {
+      align-self: flex-end;
+      background: #dcf8c6;
+      border-bottom-right-radius: 0;
+      text-align: right;
+    }
+
+    .other-message {
+      align-self: flex-start;
+      background: #fff;
+      border-bottom-left-radius: 0;
+    }
+
+    .meta {
+      font-size: 0.75em;
+      color: gray;
+      margin-top: 5px;
+    }
+
+    .message-text {
+      font-size: 1em;
+    }
+
+    .message-img {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-top: 10px;
+      align-items: center;
+      border-top: 2px solid #eee;
+      padding-top: 15px;
+      margin-top: 10px;
+    }
+
+    #input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 10px;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      outline: none;
+    }
+
+    button {
+      padding: 10px 15px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    #photo {
+      display: none;
+    }
+
+    .camera-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffffcc;
+      color: #333;
+      font-size: 1.2em;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      border: 2px solid #ccc;
+      transition: 0.3s;
+      flex-shrink: 0;
+    }
+
+    .camera-button:hover {
+      background: #eee;
+    }
+
+    @media (max-width: 768px) {
+      .chat-container {
+        padding: 15px;
+      }
+
+      #input {
+        font-size: 0.9em;
+      }
+
+      button {
+        font-size: 0.9em;
+        padding: 8px 12px;
+      }
+
+      .camera-button {
+        width: 36px;
+        height: 36px;
+        font-size: 1em;
+      }
+
+      #messages li {
+        max-width: 85%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .chat-container {
+        padding: 10px;
+      }
+
+      #input {
+        font-size: 0.85em;
+        padding: 8px;
+      }
+
+      button {
+        font-size: 0.85em;
+        padding: 7px 10px;
+      }
+
+      .camera-button {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9em;
+      }
+
+      #messages li {
+        font-size: 0.9em;
+        max-width: 95%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="login">
+  <h2>Enter Your Name</h2>
+  <input id="username" placeholder="e.g. John" />
+  <br>
+  <button onclick="login()">Join Chat</button>
+</div>
+
+<div class="chat-container" id="chat" style="display:none;">
+  <ul id="messages"></ul>
+  <form id="form">
+    <input id="input" autocomplete="off" placeholder="Type a message..." />
+    <label for="photo" class="camera-button">
+      <i class="fas fa-camera"></i>
+    </label>
+    <input type="file" id="photo" />
+    <button>Send</button>
+  </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const messages = document.getElementById('messages');
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const photo = document.getElementById('photo');
+  let username = '';
+
+  function login() {
+    username = document.getElementById('username').value.trim();
+    if (!username) return alert("Please enter a name");
+    socket.emit('set username', username);
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('chat').style.display = 'flex';
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (photo.files[0]) {
+      const formData = new FormData();
+      formData.append('image', photo.files[0]);
+
+      const res = await fetch('/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      socket.emit('chat message', { type: 'image', data: data.url });
+      photo.value = '';
+    } else if (input.value.trim()) {
+      socket.emit('chat message', { type: 'text', data: input.value.trim() });
+      input.value = '';
+    }
+  });
+
+  socket.on('chat message', function(msg) {
+    const item = document.createElement('li');
+    const time = new Date(msg.created_at || Date.now()).toLocaleTimeString();
+    const isMine = msg.username === username;
+
+    item.className = isMine ? 'my-message' : 'other-message';
+
+    if (msg.type === 'text') {
+      item.innerHTML = `<div class="message-text">${msg.data}</div><div class="meta">${msg.username} • ${time}</div>`;
+    } else if (msg.type === 'image') {
+      item.innerHTML = `<img class="message-img" src="${msg.data}"/><div class="meta">${msg.username} • ${time}</div>`;
+    }
+
+    messages.appendChild(item);
+    messages.scrollTop = messages.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
