@@ -1,90 +1,109 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
-const mysql = require('mysql2');
+const socketio = require('socket.io');
+const mysql = require('mysql2/promise');
 const multer = require('multer');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = socketio(server);
 
-// Serve static files
+const upload = multer({ dest: 'uploads/' });
+
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// File upload setup
-const storage = multer.diskStorage({
-  destination: 'uploads/',
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-const upload = multer({ storage });
-
-// MySQL Connection
-const db = mysql.createConnection({
+// MySQL connection pool
+const pool = mysql.createPool({
   host: 'localhost',
   user: 'root',
-  password: '', // your password here
-  database: 'chat_db'
-});
-db.connect(err => {
-  if (err) throw err;
-  console.log('✅ Connected to MySQL');
-});
-
-// REST endpoint for uploading images
-app.post('/upload', upload.single('image'), (req, res) => {
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.send({ url: fileUrl });
+  password: '', // your MySQL password
+  database: 'chat_db',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
+// Initialize DB table if not exists
+// async function initDb() {
+//   const conn = await pool.getConnection();
+//   await conn.query(`
+//     CREATE TABLE IF NOT EXISTS messages (
+//       id INT AUTO_INCREMENT PRIMARY KEY,
+//       username VARCHAR(255),
+//       message TEXT,
+//       file VARCHAR(255),
+//       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+//     )
+//   `);
+//   conn.release();
+// }
+// initDb().catch(console.error);
 
-// Socket.IO chat logic
+// Serve main page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/index.html'));
+});
+
+// File upload endpoint (only save file and return URL, no DB insert)
+app.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    res.json({ fileUrl: `/uploads/${file.filename}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// Socket.IO connection
 io.on('connection', (socket) => {
-  let currentUser = '';
+  console.log('New client connected');
 
-  // Receive username
-  socket.on('set username', (username) => {
-    currentUser = username;
-
-    // Load previous messages
-    db.query('SELECT * FROM messages ORDER BY created_at ASC LIMIT 50', (err, rows) => {
-      if (err) throw err;
-      rows.forEach(msg => socket.emit('chat message', msg));
-    });
+  // Send last 20 messages on request
+  socket.on('request chat history', async () => {
+    try {
+      const [rows] = await pool.query('SELECT * FROM messages ORDER BY timestamp DESC LIMIT 20');
+      socket.emit('chat history', rows.reverse());
+    } catch (err) {
+      console.error('Error fetching chat history:', err);
+    }
   });
 
-  //user count
-//   let userConnected = 0;
-//   io.on('connection', (socket) => {
-//   usersConnected++;
-//   io.emit('user count', usersConnected);
+  // Receive and broadcast chat messages
+  socket.on('chat message', async (data) => {
+    const { username, message, file } = data;
 
-//   socket.on('disconnect', () => {
-//     usersConnected--;
-//     io.emit('user count', usersConnected);
-//   });
-// });
+    try {
+      const conn = await pool.getConnection();
+      await conn.query('INSERT INTO messages (username, message, file) VALUES (?, ?, ?)', [
+        username,
+        message,
+        file || null
+      ]);
+      conn.release();
 
+      io.emit('chat message', {
+        username,
+        message,
+        file: file || null,
+        timestamp: new Date()
+      });
+    } catch (err) {
+      console.error('Error saving message:', err);
+    }
+  });
 
-  // Handle new message
-  socket.on('chat message', (msg) => {
-    const message = {
-      username: currentUser,
-      type: msg.type,
-      data: msg.data
-    };
-
-    db.query('INSERT INTO messages SET ?', message, (err) => {
-      if (err) throw err;
-      io.emit('chat message', { ...message, created_at: new Date() });
-    });
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
   });
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = 8080;
 server.listen(PORT, () => {
-  console.log(` Server running at http://localhost:${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });

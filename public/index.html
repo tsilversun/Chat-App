@@ -1,278 +1,495 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ER Real Time Chat for LRS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="favicon.ico" type="image/x-icon">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <title>Messenger-Style Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    /* Reset */
     * {
       box-sizing: border-box;
     }
 
     body {
+      font-family: Arial, sans-serif;
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #ff4e50, #1e90ff);
+      padding: 20px 0;
+      background: linear-gradient(135deg, red, blue, white);
+      min-height: 100vh;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
-    #login {
-      max-width: 400px;
-      margin: 50px auto;
-      padding: 20px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    .container {
+      width: 100%;
+      max-width: 600px;
+      background: rgba(255 255 255 / 0.9);
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+      max-height: 700px;
+      margin: 40px 0;
+    }
+
+    #usernameForm {
+      margin: auto;
+      padding: 30px 20px;
       text-align: center;
+      display: block;
     }
 
-    #username {
-      width: 80%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    .chat-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-    }
-
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #messages li {
+    #usernameForm input,
+    #usernameForm button {
+      width: 90%;
+      max-width: 300px;
+      padding: 12px 15px;
+      font-size: 1.1rem;
       margin: 10px 0;
-      max-width: 70%;
-      padding: 12px;
-      border-radius: 12px;
+      border-radius: 8px;
       border: 1px solid #ccc;
-      word-wrap: break-word;
-      word-break: break-word;
     }
 
-    .my-message {
+    #usernameForm button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #usernameForm button:hover {
+      background-color: #0056b3;
+    }
+
+    h3 {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-weight: 700;
+      font-size: 1.8rem;
+      color: #007bff; /* blue accent */
+      margin: 20px 0 10px 20px;
+      user-select: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Chat box - vertical scroll, stacked messages */
+    #chat {
+      flex: 1;
+      padding: 15px 20px;
+      overflow-y: auto;
+      border-bottom: 2px solid #007bff;
+      border-radius: 10px 10px 0 0;
+      display: none; /* hidden initially */
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+
+    /* Common message bubble styles */
+    .message-container {
+      max-width: 75%;
+      padding: 10px 15px;
+      border-radius: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      word-wrap: break-word;
+      position: relative;
+      display: inline-block;
+      font-size: 1rem;
+    }
+
+    /* Different background & alignment based on sender */
+    .message-container.self {
+      background-color:  #f1f0f0;
+      color:  #333;
       align-self: flex-end;
-      background: #dcf8c6;
-      border-bottom-right-radius: 0;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message-container.other {
+      background-color: #f1f0f0;
+      color: #333;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Username label */
+    .username-label {
+      font-weight: 700;
+      margin-bottom: 3px;
+      font-size: 0.85rem;
+      color: #555;
+    }
+
+    .username-label.self {
+      text-align: right;
+      color: #0064d2;
+    }
+
+    /* Timestamp */
+    .timestamp {
+      font-size: 0.7rem;
+      color: #999;
+      margin-top: 4px;
       text-align: right;
     }
 
-    .other-message {
-      align-self: flex-start;
-      background: #fff;
-      border-bottom-left-radius: 0;
-    }
-
-    .meta {
-      font-size: 0.75em;
-      color: gray;
+    /* Images in chat */
+    img.attachment {
+      max-width: 150px;
+      max-height: 150px;
+      display: block;
       margin-top: 5px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    img.attachment:hover {
+      transform: scale(1.05);
     }
 
-    .message-text {
-      font-size: 1em;
+    /* Message form */
+    #messageForm {
+      display: flex;
+      padding: 15px 20px;
+      background: #f9f9f9;
+      border-radius: 0 0 10px 10px;
+      gap: 10px;
+      display: none; /* hidden initially */
+      align-items: center;
     }
 
-    .message-img {
-      max-width: 100%;
+    #messageInput {
+      flex: 1;
+      padding: 12px 15px;
+      font-size: 1rem;
       border-radius: 8px;
       border: 1px solid #ccc;
-    }
-
-    form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      padding-top: 10px;
-      align-items: center;
-      border-top: 2px solid #eee;
-      padding-top: 15px;
-      margin-top: 10px;
-    }
-
-    #input {
-      flex: 1 1 auto;
-      min-width: 0;
-      padding: 10px;
-      border: 2px solid #ccc;
-      border-radius: 10px;
       outline: none;
     }
 
-    button {
-      padding: 10px 15px;
-      background: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    #photo {
+    #fileInput {
       display: none;
     }
 
-    .camera-button {
-      display: flex;
+    #fileLabel {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #ffffffcc;
-      color: #333;
-      font-size: 1.2em;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
       cursor: pointer;
-      border: 2px solid #ccc;
-      transition: 0.3s;
-      flex-shrink: 0;
+      background-color: #007bff;
+      color: white;
+      padding: 10px 14px;
+      font-size: 1.3rem;
+      border-radius: 8px;
+      transition: background-color 0.3s ease;
+      user-select: none;
+      border: none;
+      min-width: 44px;
+      height: 44px;
     }
 
-    .camera-button:hover {
-      background: #eee;
+    #fileLabel:hover {
+      background-color: #0056b3;
     }
 
-    @media (max-width: 768px) {
-      .chat-container {
-        padding: 15px;
-      }
+    #fileName {
+      font-size: 0.9rem;
+      color: #555;
+      margin-left: 8px;
+      max-width: 120px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-      #input {
-        font-size: 0.9em;
-      }
+    #sendBtn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
 
-      button {
-        font-size: 0.9em;
-        padding: 8px 12px;
-      }
-
-      .camera-button {
-        width: 36px;
-        height: 36px;
-        font-size: 1em;
-      }
-
-      #messages li {
-        max-width: 85%;
-      }
+    #sendBtn:hover {
+      background-color: #0056b3;
     }
 
     @media (max-width: 480px) {
-      .chat-container {
+      body {
         padding: 10px;
       }
 
-      #input {
-        font-size: 0.85em;
-        padding: 8px;
+      .container {
+        height: 90vh;
+        max-height: none;
       }
 
-      button {
-        font-size: 0.85em;
-        padding: 7px 10px;
+      #messageForm {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
       }
 
-      .camera-button {
-        width: 32px;
-        height: 32px;
-        font-size: 0.9em;
+      #fileLabel {
+        min-width: auto;
+        width: 100%;
+        height: 44px;
+        font-size: 1.5rem;
       }
 
-      #messages li {
-        font-size: 0.9em;
-        max-width: 95%;
+      #fileName {
+        margin-left: 0;
+        margin-top: 4px;
+        max-width: 100%;
       }
+
+      #sendBtn {
+        width: 100%;
+      }
+    }
+
+    /* Modal styles */
+    #imgModal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      padding-top: 60px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.8);
+    }
+
+    #imgModalContent {
+      margin: auto;
+      display: block;
+      max-width: 90%;
+      max-height: 80vh;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.3);
+      animation-name: zoomIn;
+      animation-duration: 0.3s;
+    }
+
+    #imgModalClose {
+      position: absolute;
+      top: 20px;
+      right: 35px;
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.3s ease;
+      user-select: none;
+    }
+
+    #imgModalClose:hover {
+      color: #bbb;
+    }
+
+    @keyframes zoomIn {
+      from {transform: scale(0.7);}
+      to {transform: scale(1);}
     }
   </style>
 </head>
 <body>
+  <div class="container">
 
-<div id="login">
-  <h2>Enter Your Name</h2>
-  <input id="username" placeholder="e.g. John" />
-  <br>
-  <button onclick="login()">Join Chat</button>
-</div>
+    <div id="usernameForm">
+      <h2>Enter Your Name</h2>
+      <input type="text" id="usernameInput" placeholder="e.g john doe.." required autocomplete="off" />
+      <button id="enterChatBtn">Enter Chat</button>
+    </div>
+    <h3>Chat</h3>
+    <div id="chat"></div>
 
-<div class="chat-container" id="chat" style="display:none;">
-  <ul id="messages"></ul>
-  <form id="form">
-    <input id="input" autocomplete="off" placeholder="Type a message..." />
-    <label for="photo" class="camera-button">
-      <i class="fas fa-camera"></i>
-    </label>
-    <input type="file" id="photo" />
-    <button>Send</button>
-  </form>
-</div>
+    <form id="messageForm">
+      <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" required />
+      
+      <input type="file" id="fileInput" accept="image/*" />
+      <label for="fileInput" id="fileLabel" title="Attach an image">📷</label>
+      <span id="fileName"></span>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  const messages = document.getElementById('messages');
-  const form = document.getElementById('form');
-  const input = document.getElementById('input');
-  const photo = document.getElementById('photo');
-  let username = '';
+      <button type="submit" id="sendBtn">Send</button>
+    </form>
 
-  function login() {
-    username = document.getElementById('username').value.trim();
-    if (!username) return alert("Please enter a name");
-    socket.emit('set username', username);
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('chat').style.display = 'flex';
-  }
+  </div>
 
-  form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    if (photo.files[0]) {
-      const formData = new FormData();
-      formData.append('image', photo.files[0]);
+  <div id="imgModal">
+    <span id="imgModalClose">&times;</span>
+    <img id="imgModalContent" src="" alt="Full Image" />
+  </div>
 
-      const res = await fetch('/upload', { method: 'POST', body: formData });
-      const data = await res.json();
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
 
-      socket.emit('chat message', { type: 'image', data: data.url });
-      photo.value = '';
-    } else if (input.value.trim()) {
-      socket.emit('chat message', { type: 'text', data: input.value.trim() });
-      input.value = '';
+    const usernameForm = document.getElementById('usernameForm');
+    const enterChatBtn = document.getElementById('enterChatBtn');
+    const usernameInput = document.getElementById('usernameInput');
+
+    const chat = document.getElementById('chat');
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameSpan = document.getElementById('fileName');
+
+    const imgModal = document.getElementById('imgModal');
+    const imgModalContent = document.getElementById('imgModalContent');
+    const imgModalClose = document.getElementById('imgModalClose');
+
+    let username = null;
+
+    function addMessage(data) {
+      const div = document.createElement('div');
+      div.classList.add('message-container');
+      // Align right if message from self, else left
+      if (data.username === username) {
+        div.classList.add('self');
+      } else {
+        div.classList.add('other');
+      }
+
+      const time = new Date(data.timestamp);
+      div.innerHTML = `
+        <div class="username-label ${data.username === username ? 'self' : 'other'}">${data.username}</div>
+        <div class="message-text">${data.message ? data.message : ''}</div>
+        ${data.file ? `<img class="attachment" src="${data.file}" alt="attachment" />` : ''}
+        <div class="timestamp">${time.toLocaleTimeString()}</div>
+      `;
+
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+
+      if (data.file) {
+        const imgs = div.getElementsByClassName('attachment');
+        for (const img of imgs) {
+          img.addEventListener('click', () => {
+            imgModal.style.display = 'block';
+            imgModalContent.src = img.src;
+            imgModalContent.alt = `Image from ${data.username}`;
+          });
+        }
+      }
     }
-  });
 
-  socket.on('chat message', function(msg) {
-    const item = document.createElement('li');
-    const time = new Date(msg.created_at || Date.now()).toLocaleTimeString();
-    const isMine = msg.username === username;
+    function showChatUI() {
+      usernameForm.style.display = 'none';
+      chat.style.display = 'flex';
+      messageForm.style.display = 'flex';
 
-    item.className = isMine ? 'my-message' : 'other-message';
-
-    if (msg.type === 'text') {
-      item.innerHTML = `<div class="message-text">${msg.data}</div><div class="meta">${msg.username} • ${time}</div>`;
-    } else if (msg.type === 'image') {
-      item.innerHTML = `<img class="message-img" src="${msg.data}"/><div class="meta">${msg.username} • ${time}</div>`;
+      socket.emit('request chat history');
+      socket.once('chat history', (messages) => {
+        chat.innerHTML = '';
+        messages.forEach(addMessage);
+      });
     }
 
-    messages.appendChild(item);
-    messages.scrollTop = messages.scrollHeight;
-  });
-</script>
+    window.addEventListener('load', () => {
+      const savedName = localStorage.getItem('chatUsername');
+      if (savedName) {
+        username = savedName;
+        showChatUI();
+      }
+    });
 
+    enterChatBtn.addEventListener('click', () => {
+      const enteredUsername = usernameInput.value.trim();
+      if (!enteredUsername) {
+        alert('Please enter a username');
+        return;
+      }
+      username = enteredUsername;
+      localStorage.setItem('chatUsername', username);
+      showChatUI();
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        fileNameSpan.textContent = fileInput.files[0].name;
+      } else {
+        fileNameSpan.textContent = '';
+      }
+    });
+
+    socket.on('chat message', (data) => {
+      addMessage(data);
+    });
+
+    messageForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const message = messageInput.value.trim();
+      const file = fileInput.files[0];
+
+      if (!message && !file) {
+        alert('Enter a message or choose a file');
+        return;
+      }
+
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('username', username);
+
+        try {
+          const res = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+
+          if (data.fileUrl) {
+            socket.emit('chat message', {
+              username,
+              message,
+              file: data.fileUrl
+            });
+          }
+        } catch (err) {
+          alert('File upload failed');
+        }
+      } else {
+        socket.emit('chat message', { username, message });
+      }
+
+      messageInput.value = '';
+      fileInput.value = '';
+      fileNameSpan.textContent = '';
+    });
+
+    imgModalClose.addEventListener('click', () => {
+      imgModal.style.display = 'none';
+      imgModalContent.src = '';
+      imgModalContent.alt = '';
+    });
+
+    imgModal.addEventListener('click', (e) => {
+      if (e.target === imgModal) {
+        imgModal.style.display = 'none';
+        imgModalContent.src = '';
+        imgModalContent.alt = '';
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && imgModal.style.display === 'block') {
+        imgModal.style.display = 'none';
+        imgModalContent.src = '';
+        imgModalContent.alt = '';
+      }
+    });
+  </script>
 </body>
 </html>
